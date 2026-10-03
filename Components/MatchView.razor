@@ -1,8 +1,9 @@
 @using RallyQueue.Models
-<div class="teams">
+
+<div class="mt-1.5 mb-3 grid gap-0.5 text-[1.05rem] font-medium">
     @{ var half = M.Players.Count / 2; }
     <div>@string.Join(" & ", M.Players.Take(half).Select(p => p.Name))</div>
-    <span class="vs">vs</span>
+    <span class="text-[.8rem] font-normal text-muted">vs</span>
     <div>@string.Join(" & ", M.Players.Skip(half).Select(p => p.Name))</div>
 </div>
 

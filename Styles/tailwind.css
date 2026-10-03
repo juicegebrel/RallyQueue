@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+:root {
+  --page: #eef1f4; --card: #fff; --ink: #17202b; --muted: #647082; --line: #d5dbe3;
+  --court: #1d4e89; --on-court: #fff; --warn: #b4501f;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #10151c; --card: #181f29; --ink: #e7ebf0; --muted: #8d99a8; --line: #28313d;
+    --court: #6fa3e0; --on-court: #0b1220; --warn: #e08a5c;
+  }
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-court: var(--court);
+  --color-on-court: var(--on-court);
+  --color-warn: var(--warn);
+  --color-ball: #d7e24a;
+  --font-display: "Barlow Semi Condensed", system-ui, sans-serif;
+  --font-sans: Barlow, system-ui, sans-serif;
+}
+
+@layer base {
+  body { background: var(--page); color: var(--ink); font: 400 15px/1.45 var(--font-sans); }
+  button, select, input:not([type="checkbox"]) {
+    border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: .4rem .7rem;
+  }
+  button { cursor: pointer; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  :focus-visible { outline: 2px solid var(--court); outline-offset: 2px; }
+}

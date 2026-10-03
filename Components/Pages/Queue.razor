@@ -1,12 +1,13 @@
 @page "/"
 @rendermode InteractiveServer
 @implements IDisposable
-
 @inject QueueService Q
 
-<header class="top">
-    <h1>Court Queue</h1>
-    <div class="settings">
+<PageTitle>Court Queue</PageTitle>
+
+<header class="flex flex-wrap items-center justify-between gap-4 border-b-[3px] border-ball bg-card px-6 py-4">
+    <h1 class="font-display text-[2rem] font-bold tracking-[.01em]">Court Queue</h1>
+    <div class="flex flex-wrap items-center gap-2.5">
         <select value="@Q.Sport" @onchange="e => Q.SetSport(e.Value?.ToString() ?? Q.Sport)">
             <option>Pickleball</option>
             <option>Badminton</option>
@@ -15,55 +16,55 @@
             <option value="4">Doubles (4)</option>
             <option value="2">Singles (2)</option>
         </select>
-        <label>Courts
+        <label class="flex items-center gap-1.5 text-muted">Courts
             <select value="@Q.Courts.Count" @onchange="e => Q.SetCourts(int.Parse(e.Value!.ToString()!))">
                 @for (var i = 1; i <= 8; i++) { <option value="@i">@i</option> }
             </select>
         </label>
-        <label class="check"><input type="checkbox" checked="@Q.AutoQueue"
+        <label class="flex items-center gap-1.5 text-muted"><input type="checkbox" checked="@Q.AutoQueue"
                @onchange="e => Q.SetAutoQueue((bool)e.Value!)" /> Auto-queue</label>
     </div>
 </header>
 
-<main>
-    <section class="courts">
+<main class="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] md:px-6 md:py-5">
+    <section class="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-4 md:col-span-2">
         @foreach (var c in Q.Courts)
         {
-            <article class="court @(c.Current != null ? "live" : "")">
-                <h2>Court @c.Number</h2>
+            <article class="@Card border-l-[6px] @(c.Current != null ? "border-l-court" : "")">
+                <h2 class="@H2">Court @c.Number</h2>
                 @if (c.Current == null)
                 {
-                    <p class="muted">Open</p>
-                    <button class="primary" disabled="@(Q.Queue.Count == 0)" @onclick="() => Q.Start(c)">Start next match</button>
+                    <p class="mt-0.5 mb-3 text-muted">Open</p>
+                    <button class="@Primary" disabled="@(Q.Queue.Count == 0)" @onclick="() => Q.Start(c)">Start next match</button>
                 }
                 else
                 {
-                    <MatchView M="c.Current" />
-                    <button class="primary" @onclick="() => Q.Finish(c)">Finish game</button>
+                    <MatchView M="c.Current!" />
+                    <button class="@Primary" @onclick="() => Q.Finish(c)">Finish game</button>
                 }
             </article>
         }
     </section>
 
-    <section class="queue">
-        <h2>Up next</h2>
+    <section class="@Card">
+        <h2 class="@H2">Up next</h2>
         @if (Q.Queue.Count == 0)
         {
-            <p class="muted">@(Q.Waiting.Count < Q.PerGame
+            <p class="mt-0.5 mb-3 text-muted">@(Q.Waiting.Count < Q.PerGame
                 ? $"Add at least {Q.PerGame} available players to form a match."
                 : "No matches queued.")</p>
         }
         @for (var i = 0; i < Q.Queue.Count; i++)
         {
             var m = Q.Queue[i];
-            <div class="qmatch">
-                <span class="pos">@(i + 1)</span>
-                <div class="slots">
+            <div class="flex items-center gap-3 border-t border-line py-3">
+                <span class="grid size-[1.9rem] flex-none place-items-center rounded-full bg-ball font-bold text-[#17202b]">@(i + 1)</span>
+                <div class="grid flex-1 grid-cols-2 gap-x-3 gap-y-1.5">
                     @foreach (var p in m.Players.ToList())
                     {
-                        <div class="slot">
-                            <b>@p.Name</b> <small>@p.Games played</small>
-                            <select value="" @onchange="e => Swap(m, p, e)">
+                        <div class="flex flex-wrap items-baseline gap-x-1.5">
+                            <b>@p.Name</b> <small class="text-muted">@p.Games played</small>
+                            <select class="mt-0.5 w-full px-1.5 py-0.5 text-[.85rem] text-muted" value="" @onchange="e => Swap(m, p, e)">
                                 <option value="">Swap…</option>
                                 @foreach (var w in Q.Waiting)
                                 {
@@ -73,7 +74,7 @@
                         </div>
                     }
                 </div>
-                <button class="ghost" @onclick="() => Q.RemoveMatch(m)">Remove</button>
+                <button class="bg-transparent" @onclick="() => Q.RemoveMatch(m)">Remove</button>
             </div>
         }
         @if (!Q.AutoQueue)
@@ -82,42 +83,56 @@
         }
     </section>
 
-    <section class="players">
-        <h2>Players <small>@Q.Players.Count</small></h2>
-        <div class="add">
-            <input placeholder="Player name" @bind="newName" @bind:event="oninput" @onkeydown="OnKey" />
-            <button class="primary" @onclick="Add">Add player</button>
+    <section class="@Card">
+        <h2 class="@H2">Players <small class="ml-1 font-medium text-muted">@Q.Players.Count</small></h2>
+        <div class="mb-3 flex gap-2">
+            <input class="min-w-0 flex-1" placeholder="Player name" @bind="newName" @bind:event="oninput" @onkeydown="OnKey" />
+            <button class="@Primary" @onclick="Add">Add player</button>
         </div>
         @if (Q.Players.Count == 0)
         {
-            <p class="muted">No players yet. Add names as people arrive.</p>
+            <p class="mt-0.5 mb-3 text-muted">No players yet. Add names as people arrive.</p>
         }
-        <table>
-            @foreach (var p in Q.Players.OrderBy(p => p.Games).ThenBy(p => p.Order))
-            {
-                var status = Q.StatusOf(p);
-                <tr class="@status.ToLower()">
-                    <td class="name">@p.Name</td>
-                    <td><span class="chip @status.ToLower()">@status</span></td>
-                    <td class="games">
-                        <button class="ghost sq" @onclick="() => Q.AdjustGames(p, -1)">−</button>
-                        <span>@p.Games</span>
-                        <button class="ghost sq" @onclick="() => Q.AdjustGames(p, 1)">+</button>
-                    </td>
-                    <td class="act">
-                        <button class="ghost" disabled="@(status == "Playing")"
-                                @onclick="() => Q.SetResting(p, !p.Resting)">@(p.Resting ? "Return" : "Rest")</button>
-                        <button class="ghost" disabled="@(status == "Playing")"
-                                @onclick="() => Q.RemovePlayer(p)">Remove</button>
-                    </td>
-                </tr>
-            }
-        </table>
+        @foreach (var p in Q.Players.OrderBy(p => p.Games).ThenBy(p => p.Order))
+        {
+            var status = Q.StatusOf(p);
+            <div class="flex items-center gap-2 border-t border-line py-1.5">
+                <span class="flex-1 font-medium @(status == "Resting" ? "text-muted" : "")">@p.Name</span>
+                <span class="rounded-full border px-2 py-0.5 text-xs @ChipClass(status)">@status</span>
+                <div class="flex items-center">
+                    <button class="w-[1.9rem] bg-transparent px-0 py-0.5" @onclick="() => Q.AdjustGames(p, -1)">−</button>
+                    <span class="min-w-[1.6rem] text-center text-lg font-bold">@p.Games</span>
+                    <button class="w-[1.9rem] bg-transparent px-0 py-0.5" @onclick="() => Q.AdjustGames(p, 1)">+</button>
+                </div>
+                <div class="flex gap-1">
+                    <button class="bg-transparent" disabled="@(status == "Playing")"
+                            @onclick="() => Q.SetResting(p, !p.Resting)">@(p.Resting ? "Return" : "Rest")</button>
+                    <button class="bg-transparent" disabled="@(status == "Playing")"
+                            @onclick="() => Q.RemovePlayer(p)">Remove</button>
+                </div>
+            </div>
+        }
     </section>
 </main>
 
 @code {
+    const string Card = "rounded-[10px] border border-line bg-card p-4";
+    const string H2 = "mb-2.5 font-display text-xl font-bold";
+    const string Primary = "border-court bg-court font-medium text-on-court";
+
+    static string ChipClass(string s) => s switch
+    {
+        "Playing" => "border-court bg-court text-on-court",
+        "Queued"  => "border-ball bg-ball text-[#17202b]",
+        "Resting" => "border-warn text-warn",
+        _         => "border-line"
+    };
+
     string newName = "";
+
+    protected override void OnInitialized() => Q.Changed += OnChanged;
+    void OnChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Q.Changed -= OnChanged;
 
     void Add() { Q.AddPlayer(newName); newName = ""; }
     void OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") Add(); }
@@ -130,8 +145,4 @@
             if (np != null) Q.Swap(m, old, np);
         }
     }
-
-    protected override void OnInitialized() => Q.Changed += OnChanged;
-    void OnChanged() => InvokeAsync(StateHasChanged);
-    public void Dispose() => Q.Changed -= OnChanged;
 }
