@@ -1,0 +1,137 @@
+@page "/"
+@rendermode InteractiveServer
+@implements IDisposable
+
+@inject QueueService Q
+
+<header class="top">
+    <h1>Court Queue</h1>
+    <div class="settings">
+        <select value="@Q.Sport" @onchange="e => Q.SetSport(e.Value?.ToString() ?? Q.Sport)">
+            <option>Pickleball</option>
+            <option>Badminton</option>
+        </select>
+        <select value="@Q.PerGame" @onchange="e => Q.SetFormat(int.Parse(e.Value!.ToString()!))">
+            <option value="4">Doubles (4)</option>
+            <option value="2">Singles (2)</option>
+        </select>
+        <label>Courts
+            <select value="@Q.Courts.Count" @onchange="e => Q.SetCourts(int.Parse(e.Value!.ToString()!))">
+                @for (var i = 1; i <= 8; i++) { <option value="@i">@i</option> }
+            </select>
+        </label>
+        <label class="check"><input type="checkbox" checked="@Q.AutoQueue"
+               @onchange="e => Q.SetAutoQueue((bool)e.Value!)" /> Auto-queue</label>
+    </div>
+</header>
+
+<main>
+    <section class="courts">
+        @foreach (var c in Q.Courts)
+        {
+            <article class="court @(c.Current != null ? "live" : "")">
+                <h2>Court @c.Number</h2>
+                @if (c.Current == null)
+                {
+                    <p class="muted">Open</p>
+                    <button class="primary" disabled="@(Q.Queue.Count == 0)" @onclick="() => Q.Start(c)">Start next match</button>
+                }
+                else
+                {
+                    <MatchView M="c.Current" />
+                    <button class="primary" @onclick="() => Q.Finish(c)">Finish game</button>
+                }
+            </article>
+        }
+    </section>
+
+    <section class="queue">
+        <h2>Up next</h2>
+        @if (Q.Queue.Count == 0)
+        {
+            <p class="muted">@(Q.Waiting.Count < Q.PerGame
+                ? $"Add at least {Q.PerGame} available players to form a match."
+                : "No matches queued.")</p>
+        }
+        @for (var i = 0; i < Q.Queue.Count; i++)
+        {
+            var m = Q.Queue[i];
+            <div class="qmatch">
+                <span class="pos">@(i + 1)</span>
+                <div class="slots">
+                    @foreach (var p in m.Players.ToList())
+                    {
+                        <div class="slot">
+                            <b>@p.Name</b> <small>@p.Games played</small>
+                            <select value="" @onchange="e => Swap(m, p, e)">
+                                <option value="">Swap…</option>
+                                @foreach (var w in Q.Waiting)
+                                {
+                                    <option value="@w.Id">@w.Name (@w.Games)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+                <button class="ghost" @onclick="() => Q.RemoveMatch(m)">Remove</button>
+            </div>
+        }
+        @if (!Q.AutoQueue)
+        {
+            <button disabled="@(Q.Waiting.Count < Q.PerGame)" @onclick="() => Q.QueueMatch()">Queue next match</button>
+        }
+    </section>
+
+    <section class="players">
+        <h2>Players <small>@Q.Players.Count</small></h2>
+        <div class="add">
+            <input placeholder="Player name" @bind="newName" @bind:event="oninput" @onkeydown="OnKey" />
+            <button class="primary" @onclick="Add">Add player</button>
+        </div>
+        @if (Q.Players.Count == 0)
+        {
+            <p class="muted">No players yet. Add names as people arrive.</p>
+        }
+        <table>
+            @foreach (var p in Q.Players.OrderBy(p => p.Games).ThenBy(p => p.Order))
+            {
+                var status = Q.StatusOf(p);
+                <tr class="@status.ToLower()">
+                    <td class="name">@p.Name</td>
+                    <td><span class="chip @status.ToLower()">@status</span></td>
+                    <td class="games">
+                        <button class="ghost sq" @onclick="() => Q.AdjustGames(p, -1)">−</button>
+                        <span>@p.Games</span>
+                        <button class="ghost sq" @onclick="() => Q.AdjustGames(p, 1)">+</button>
+                    </td>
+                    <td class="act">
+                        <button class="ghost" disabled="@(status == "Playing")"
+                                @onclick="() => Q.SetResting(p, !p.Resting)">@(p.Resting ? "Return" : "Rest")</button>
+                        <button class="ghost" disabled="@(status == "Playing")"
+                                @onclick="() => Q.RemovePlayer(p)">Remove</button>
+                    </td>
+                </tr>
+            }
+        </table>
+    </section>
+</main>
+
+@code {
+    string newName = "";
+
+    void Add() { Q.AddPlayer(newName); newName = ""; }
+    void OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") Add(); }
+
+    void Swap(Match m, Player old, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+        {
+            var np = Q.Players.FirstOrDefault(p => p.Id == id);
+            if (np != null) Q.Swap(m, old, np);
+        }
+    }
+
+    protected override void OnInitialized() => Q.Changed += OnChanged;
+    void OnChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Q.Changed -= OnChanged;
+}

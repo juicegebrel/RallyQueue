@@ -1,0 +1,11 @@
+@using RallyQueue.Models
+<div class="teams">
+    @{ var half = M.Players.Count / 2; }
+    <div>@string.Join(" & ", M.Players.Take(half).Select(p => p.Name))</div>
+    <span class="vs">vs</span>
+    <div>@string.Join(" & ", M.Players.Skip(half).Select(p => p.Name))</div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Match M { get; set; } = default!;
+}
